@@ -23,7 +23,6 @@ app.post('/api/test-connection', async (req, res) => {
   const { connectionString, query } = req.body;
   console.log(`[TEST] 接続試行: ${connectionString}`);
   if (!connectionString) {
-    console.error('[ERROR] connectionString が空です');
     return res.status(400).json({ ok: false, error: 'connectionString is required' });
   }
 
@@ -33,23 +32,26 @@ app.post('/api/test-connection', async (req, res) => {
     connectionTimeoutMillis: 5000,
     idle_in_transaction_session_timeout: 5000
   });
-
   client.on('error', err => console.error('[PG CLIENT ERROR]', err));
 
   try {
     await client.connect();
     console.log('[TEST] 接続成功');
 
-    const sql = query && query.trim().length > 0 ? query : 'SELECT version()';
-    console.log('[TEST] 実行クエリ：', sql);
-    const result = await client.query(sql);
-    console.log('[TEST] クエリ結果行数:', result.rowCount);
-    await client.end();
-
-    res.json({ ok: true, rows: result.rows, rowCount: result.rowCount });
+    // SQL があれば実行、なければ接続テストのみ
+    if (query && query.trim()) {
+      console.log('[TEST] 実行クエリ：', query);
+      const result = await client.query(query);
+      console.log('[TEST] クエリ結果行数:', result.rowCount);
+      await client.end();
+      return res.json({ ok: true, rows: result.rows, rowCount: result.rowCount });
+    } else {
+      await client.end();
+      return res.json({ ok: true });
+    }
   } catch (err) {
     console.error('[TEST ERROR]', err.stack || err);
-    res.json({ ok: false, error: err.stack || err.message });
+    return res.json({ ok: false, error: err.stack || err.message });
   }
 });
 
@@ -68,7 +70,7 @@ app.post('/api/copy-database', (req, res) => {
       return res.json({ ok: false, error: stderr || err.message });
     }
     console.log('[COPY DONE]', stdout);
-    res.json({ ok: true, log: stdout || '（stdout empty）' });
+    return res.json({ ok: true, log: stdout || '（stdout empty）' });
   });
 });
 
