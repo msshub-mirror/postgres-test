@@ -18,23 +18,39 @@ app.use((req, res, next) => {
 });
 
 // 接続テスト用エンドポイント
+// …省略…
 app.post('/api/test-connection', async (req, res) => {
   const { connectionString } = req.body;
+  console.log(`[TEST] 接続試行: ${connectionString}`);    // ← 追加
   if (!connectionString) {
+    console.error('[ERROR] connectionString が空です');
     return res.status(400).json({ ok: false, error: 'connectionString is required' });
   }
 
-  const client = new Client({ connectionString });
+  const client = new Client({
+    connectionString,
+    // タイムアウト例: 5秒で打ち切る
+    connectionTimeoutMillis: 5000,
+    idle_in_transaction_session_timeout: 5000
+  });
+  client.on('error', err => {
+    console.error('[PG CLIENT ERROR]', err);             // ← 追加
+  });
+
   try {
     await client.connect();
-    // 簡易クエリでバージョン取得
+    console.log('[TEST] 接続成功: クエリ実行中…');
     const result = await client.query('SELECT version()');
+    console.log('[TEST] クエリ結果:', result.rows[0].version);
     await client.end();
     res.json({ ok: true, version: result.rows[0].version });
   } catch (err) {
-    res.json({ ok: false, error: err.message });
+    // スタック全体をログに出力
+    console.error('[TEST ERROR]', err.stack || err);
+    res.json({ ok: false, error: err.stack || err.message });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
