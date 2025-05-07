@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PostgreSQL 接続テスト</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2em; }
+    textarea { width: 100%; height: 4em; }
+    button { padding: 0.5em 1em; margin-top: 0.5em; }
+    pre { background: #f4f4f4; padding: 1em; }
+  </style>
+</head>
+<body>
+  <h1>PostgreSQL 接続テスト</h1>
+  <p>接続文字列（例：<code>postgresql://user:pass@host:5432/dbname</code>）を入力して「テスト実行」</p>
+  <textarea id="connStr" placeholder="postgresql://..."></textarea>
+  <button id="btn">テスト実行</button>
+  <h2>結果</h2>
+  <pre id="result">—</pre>
+
+  <script>
+    document.getElementById('btn').addEventListener('click', async () => {
+      const conn = document.getElementById('connStr').value.trim();
+      if (!conn) return alert('接続文字列を入力してください');
+      document.getElementById('result').textContent = '接続中…';
+      try {
+        const res = await fetch('/api/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ connectionString: conn })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          document.getElementById('result').textContent = '接続成功！\n' + data.version;
+        } else {
+          document.getElementById('result').textContent = '接続失敗：\n' + data.error;
+        }
+      } catch (e) {
+        document.getElementById('result').textContent = '通信エラー：\n' + e;
+      }
+    });
+  </script>
+</body>
+</html>
