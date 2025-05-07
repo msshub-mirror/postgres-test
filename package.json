@@ -1,7 +1,7 @@
 {
   "name": "postgres-test",
   "version": "1.0.0",
-  "description": "Simple PostgreSQL connection tester",
+  "description": "Simple PostgreSQL connection tester & copier",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
