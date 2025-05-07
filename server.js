@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { Client } = require('pg');
+const { exec } = require('child_process');
 const path = require('path');
 
 const app = express();
@@ -28,16 +29,12 @@ app.post('/api/test-connection', async (req, res) => {
 
   const client = new Client({
     connectionString,
-    ssl: {
-      rejectUnauthorized: false
-    },
+    ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 5000,
     idle_in_transaction_session_timeout: 5000
   });
 
-  client.on('error', err => {
-    console.error('[PG CLIENT ERROR]', err);
-  });
+  client.on('error', err => console.error('[PG CLIENT ERROR]', err));
 
   try {
     await client.connect();
@@ -49,17 +46,30 @@ app.post('/api/test-connection', async (req, res) => {
     console.log('[TEST] クエリ結果行数:', result.rowCount);
     await client.end();
 
-    res.json({
-      ok: true,
-      rows: result.rows,
-      rowCount: result.rowCount
-    });
+    res.json({ ok: true, rows: result.rows, rowCount: result.rowCount });
   } catch (err) {
     console.error('[TEST ERROR]', err.stack || err);
     res.json({ ok: false, error: err.stack || err.message });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// データベース丸ごとコピーエンドポイント
+app.post('/api/copy-database', (req, res) => {
+  const { source, target } = req.body;
+  console.log(`[COPY] ${source} => ${target}`);
+  if (!source || !target) {
+    return res.status(400).json({ ok: false, error: 'source と target の両方が必要です' });
+  }
+
+  const cmd = `pg_dump "${source}" | psql "${target}"`;
+  exec(cmd, { timeout: 600000 }, (err, stdout, stderr) => {
+    if (err) {
+      console.error('[COPY ERROR]', stderr || err.message);
+      return res.json({ ok: false, error: stderr || err.message });
+    }
+    console.log('[COPY DONE]', stdout);
+    res.json({ ok: true, log: stdout || '（stdout empty）' });
+  });
 });
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
