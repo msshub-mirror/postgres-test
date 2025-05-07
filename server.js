@@ -30,8 +30,8 @@ app.post('/api/test-connection', async (req, res) => {
   const client = new Client({
     connectionString,
     // タイムアウト例: 5秒で打ち切る
-    connectionTimeoutMillis: 5000,
-    idle_in_transaction_session_timeout: 5000
+    connectionTimeoutMillis: 60000,
+    idle_in_transaction_session_timeout: 60000
   });
   client.on('error', err => {
     console.error('[PG CLIENT ERROR]', err);             // ← 追加
